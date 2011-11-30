@@ -1,0 +1,84 @@
+<html manifest = 'index.appcache'>
+<head>
+</head>
+<body>
+    <ul><li><label>existing balance: <input type='text' id='existing_balance' /></label></li>
+<li><label>rides to purchase: <input type='text' id='rides_to_purchase' /></label></li>
+</ul>
+<label>add this to your card: <div id='add_to_card' ></div></label>
+<label>to make your balance: <div id='new_balance' ></div></label>
+<label>and have this many rides: <div id='new_rides_total' ></div></label>
+<label>and this much left over: <div id='remainder' ></div></label>
+<label>with one more ride: <div id='with_one_more_ride' ></div></label>
+<label>for one more ride: <div id='for_one_more_ride' ></div></label>
+
+<script type='text/javascript'>
+(function () {
+	var money_to_add = function(params) {
+	    var defaults = {
+	        bonus_threshold:10,
+	        bonus_rate:0.07,
+	        ride_price:2.25,
+	        existing_balance:0,
+	        rides_to_purchase:1,
+	        purchase_increment:0.05,
+	    };
+	    for (i in params) {
+	        defaults[i] = params[i];
+	    }
+	    var got_bonus = true,
+		with_one_more_ride = 0,
+		for_one_more_ride = 0;
+	with (defaults) {
+	        var r = (ride_price * (rides_to_purchase + Math.floor(existing_balance / ride_price)) - existing_balance) / (1 + bonus_rate );
+            if (r < bonus_threshold) { // if the suggested pay amount is under the bonus theshold
+		if (r * (1 + bonus_rate) >= bonus_threshold) { // if the suggested pay amount without the bonus is over the bonus threshold
+			with_one_more_ride = r + ride_price / (1 + bonus_rate);
+			r = bonus_threshold;
+			for_one_more_ride = with_one_more_ride - r * (1 + bonus_rate);
+			got_bonus = "buy_more";
+		} else {
+			got_bonus = false;
+			r *= 1 + bonus_rate;
+			bonus_rate = 0;
+		}
+            }
+            r += (purchase_increment - r % purchase_increment) % purchase_increment; // round it up to the nearest purchase increment
+            r = r.toFixed(2); // kill the floating-point cruft
+    	    return {
+    	        add_to_card:r,
+    	        got_bonus:got_bonus,
+    	        total_rides:((existing_balance + r * (1+bonus_rate)) / ride_price).toFixed(),
+    	        new_balance:(existing_balance + r * (1+bonus_rate)).toFixed(2),
+    	        remainder:((existing_balance + r * (1+bonus_rate)) % ride_price).toFixed(2),
+		with_one_more_ride: with_one_more_ride.toFixed(2),
+		for_one_more_ride: for_one_more_ride.toFixed(2),
+    	    };
+        }
+	}
+	var eb = document.getElementById('existing_balance');
+	var rp = document.getElementById('rides_to_purchase');
+	var ac = document.getElementById('add_to_card');
+	var nb = document.getElementById('new_balance');
+	var rt = document.getElementById('new_rides_total');
+	var ws = document.getElementById('remainder');
+	var wo = document.getElementById('with_one_more_ride');
+	var fo = document.getElementById('for_one_more_ride');
+	var recalculate = rp.onkeyup = eb.onkeyup = function(e) {
+	    var params = {
+    	        existing_balance:parseFloat(eb.value?eb.value:""),
+    	        rides_to_purchase:parseFloat(rp.value?rp.value:""),
+    	        bonus_threshold:10
+    	    },
+    	    ma = money_to_add(params);
+	    ac.innerHTML = "" + ma.add_to_card + (ma.got_bonus ? (ma.got_bonus == "buy_more" ? " (buy more)" : "") : " (no bonus)");
+	    nb.innerHTML = ma.new_balance;
+	    rt.innerHTML = ma.total_rides;
+	    ws.innerHTML = ma.remainder;
+	    wo.innerHTML = ma.with_one_more_ride;
+	    fo.innerHTML = ma.for_one_more_ride;
+	}
+})();
+</script>
+</body>
+</html>
